@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<PluginV1XML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <FRIENDLY_NAME>ZAMA Emotion Model</FRIENDLY_NAME>
+  <DLL_FILENAME>ZAMAEmotionModel.dll</DLL_FILENAME>
+  <AUTHOR_NAME>AZRAM</AUTHOR_NAME>
+  <LICENSE_URL>https://synthiam.com/Software/plugin-license.aspx</LICENSE_URL>
+  <PLUGIN_GUID>20556bb2-91d7-4e6e-8bd7-272733fd970f</PLUGIN_GUID>
+  <CATEGORY_TYPE>Beta</CATEGORY_TYPE>
+  <DESCRIPTION>Emotion model that calculated a robot's personality, mood, internal needs and responses to external stimuli.</DESCRIPTION>
+  <ALLOW_MULTIPLE_INSTANCES>false</ALLOW_MULTIPLE_INSTANCES>
+  <VersionRelease>0</VersionRelease>
+</PluginV1XML>

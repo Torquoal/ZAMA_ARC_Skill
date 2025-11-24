@@ -1,0 +1,36 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\smd56j\\Documents\\ARC_Skill\\ARC Skill\\ZAMA Emotion Model\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{4CE754EF-269C-4F69-8509-607F0C63213D}|MY_PROJECT_NAME\\MY_PROJECT_NAME.csproj|c:\\users\\smd56j\\documents\\arc_skill\\arc skill\\zama emotion model\\my_project_name\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{4CE754EF-269C-4F69-8509-607F0C63213D}|MY_PROJECT_NAME\\MY_PROJECT_NAME.csproj|solutionrelative:my_project_name\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainForm.cs [Design]",
+              "DocumentMoniker": "C:\\Users\\smd56j\\Documents\\ARC_Skill\\ARC Skill\\ZAMA Emotion Model\\MY_PROJECT_NAME\\MainForm.cs",
+              "RelativeDocumentMoniker": "MY_PROJECT_NAME\\MainForm.cs",
+              "ToolTip": "C:\\Users\\smd56j\\Documents\\ARC_Skill\\ARC Skill\\ZAMA Emotion Model\\MY_PROJECT_NAME\\MainForm.cs [Design]",
+              "RelativeToolTip": "MY_PROJECT_NAME\\MainForm.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-24T13:09:33.364Z",
+              "EditorCaption": " [Design]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
