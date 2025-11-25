@@ -1,0 +1,84 @@
+: Test script for ZAMA Emotion Model using ARC variables
+: Commands are sent via $Emotion.Command variable
+: Format: COMMAND:param1:param2:param3
+: Examples:
+:   $Emotion.Command = TriggerEvent:happy
+:   $Emotion.Command = RegisterEvent:excited:9:8
+:   $Emotion.Command = GetEmotion
+
+PRINT("=== ZAMA Emotion Model Test Script ===")
+PRINT("")
+
+: Step 1: Register some test events
+PRINT("Step 1: Registering test events...")
+$Emotion.Command = "RegisterEvent:happy:8:6"
+Sleep(1000)
+PRINT("  Registered: happy (valence=8, arousal=6)")
+
+$Emotion.Command = "RegisterEvent:sad:-7:-3"
+Sleep(1000)
+PRINT("  Registered: sad (valence=-7, arousal=-3)")
+
+$Emotion.Command = "RegisterEvent:excited:9:8"
+Sleep(1000)
+PRINT("  Registered: excited (valence=9, arousal=8)")
+
+PRINT("")
+: Verify events were registered
+PRINT("Step 1.5: Verifying registered events...")
+$Emotion.Command = "ListEvents"
+Sleep(500)
+PRINT("  Registered events: " + $EmotionEvents)
+PRINT("")
+
+PRINT("Step 2: Getting initial MOOD state (persistent, changes slowly)...")
+$Emotion.Command = "GetMood"
+Sleep(1000)
+PRINT("  Persistent Mood: " + $EmotionMood)
+PRINT("  Mood Valence: " + $EmotionMoodValence)
+PRINT("  Mood Arousal: " + $EmotionMoodArousal)
+PRINT("  Temperament: " + $EmotionTemperament)
+PRINT("")
+
+: Step 3: Trigger some events and check RESPONSES
+PRINT("Step 3: Triggering events and checking RESPONSES (immediate reactions)...")
+PRINT("  About to trigger 'happy' (should use valence=8, arousal=6)...")
+$Emotion.Command = "TriggerEvent:happy"
+Sleep(1000)
+$Emotion.Command = "GetEmotion"
+Sleep(500)
+PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
+PRINT("")
+
+PRINT("  About to trigger 'sad' (should use valence=-7, arousal=-3)...")
+$Emotion.Command = "TriggerEvent:sad"
+Sleep(1000)
+$Emotion.Command = "GetEmotion"
+Sleep(500)
+PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
+PRINT("")
+
+PRINT("  About to trigger 'excited' (should use valence=9, arousal=8)...")
+$Emotion.Command = "TriggerEvent:excited"
+Sleep(1000)
+$Emotion.Command = "GetEmotion"
+Sleep(500)
+PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
+PRINT("")
+
+PRINT("=== Test Complete ===")
+PRINT("Final State - Event Response:")
+$Emotion.Command = "GetEmotion"
+Sleep(500)
+PRINT("  Response Emotion: " + $EmotionCurrent)
+PRINT("  Response Valence: " + $EmotionValence)
+PRINT("  Response Arousal: " + $EmotionArousal)
+PRINT("")
+PRINT("Final State - Persistent Mood:")
+$Emotion.Command = "GetMood"
+Sleep(500)
+PRINT("  Mood: " + $EmotionMood)
+PRINT("  Mood Valence: " + $EmotionMoodValence)
+PRINT("  Mood Arousal: " + $EmotionMoodArousal)
+PRINT("  Temperament: " + $EmotionTemperament)
+
