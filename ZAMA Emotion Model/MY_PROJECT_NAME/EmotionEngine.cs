@@ -19,6 +19,11 @@ namespace ZAMAEmotionModel
         private float _eventWeight = 0.7f;
         private float _moodWeight = 0.3f;
         private float _stochasticVariability = 1f;
+        private bool _randomizePersonality = true;
+        private bool _allowMoodShift = true;
+        private bool _allowPersonalityShift = true;
+        private const float MoodShiftGain = 0.01f;
+        private const float PersonalityShiftGain = 0.001f;
 
         private readonly Dictionary<string, EmotionalResponseValues> _moodBaseValues = new Dictionary<string, EmotionalResponseValues>(StringComparer.OrdinalIgnoreCase)
         {
@@ -35,10 +40,7 @@ namespace ZAMAEmotionModel
 
         public EmotionEngine()
         {
-            // Start with long-term mood; randomize slightly so every run feels unique.
-            _moodValence = Clamp(_longTermValence + RandomRange(-2f, 2f), -10f, 10f);
-            _moodArousal = Clamp(_longTermArousal + RandomRange(-2f, 2f), -10f, 10f);
-            CurrentMood = ClassifyMood(_moodValence, _moodArousal);
+            InitializeCurrentMood();
         }
 
         public string CurrentMood { get; private set; }
@@ -47,6 +49,33 @@ namespace ZAMAEmotionModel
         public float LongTermValence => _longTermValence;
         public float LongTermArousal => _longTermArousal;
         public string CurrentTemperament => ClassifyMood(_longTermValence, _longTermArousal);
+
+        public void SetPersonality(float valence, float arousal, bool reinitializeMood = true)
+        {
+            _longTermValence = Clamp(valence, -10f, 10f);
+            _longTermArousal = Clamp(arousal, -10f, 10f);
+
+            if (reinitializeMood)
+            {
+                InitializeCurrentMood();
+            }
+        }
+
+        public void SetRandomizePersonality(bool randomize, bool reinitializeMood = true)
+        {
+            _randomizePersonality = randomize;
+
+            if (reinitializeMood)
+            {
+                InitializeCurrentMood();
+            }
+        }
+
+        public void SetShiftOptions(bool allowMoodShift, bool allowPersonalityShift)
+        {
+            _allowMoodShift = allowMoodShift;
+            _allowPersonalityShift = allowPersonalityShift;
+        }
 
         public EmotionalResponseResult CalculateResponse(float eventValence, float eventArousal, string triggerEvent)
         {
@@ -69,14 +98,45 @@ namespace ZAMAEmotionModel
             var fuzzedValence = combined.Valence + RandomRange(-_stochasticVariability, _stochasticVariability);
             var fuzzedArousal = combined.Arousal + RandomRange(-_stochasticVariability, _stochasticVariability);
 
-            // Small drift to mood so repeated triggers change state over time.
-            _moodValence = Clamp(_moodValence + fuzzedValence * 0.01f, -10f, 10f);
-            _moodArousal = Clamp(_moodArousal + fuzzedArousal * 0.01f, -10f, 10f);
+            // Small drift to mood/personality so repeated triggers change state over time.
+            if (_allowMoodShift)
+            {
+                _moodValence = Clamp(_moodValence + fuzzedValence * MoodShiftGain, -10f, 10f);
+                _moodArousal = Clamp(_moodArousal + fuzzedArousal * MoodShiftGain, -10f, 10f);
+            }
+
+            if (_allowPersonalityShift)
+            {
+                _longTermValence = Clamp(_longTermValence + fuzzedValence * PersonalityShiftGain, -10f, 10f);
+                _longTermArousal = Clamp(_longTermArousal + fuzzedArousal * PersonalityShiftGain, -10f, 10f);
+            }
+
             CurrentMood = ClassifyMood(_moodValence, _moodArousal);
 
             var displayEmotion = ResolveDisplayEmotion(fuzzedValence, fuzzedArousal);
 
             return new EmotionalResponseResult(displayEmotion, fuzzedValence, fuzzedArousal, triggerEvent);
+        }
+
+        public void RefreshMoodFromCurrentSettings()
+        {
+            InitializeCurrentMood();
+        }
+
+        private void InitializeCurrentMood()
+        {
+            if (_randomizePersonality)
+            {
+                _moodValence = Clamp(_longTermValence + RandomRange(-2f, 2f), -10f, 10f);
+                _moodArousal = Clamp(_longTermArousal + RandomRange(-2f, 2f), -10f, 10f);
+            }
+            else
+            {
+                _moodValence = _longTermValence;
+                _moodArousal = _longTermArousal;
+            }
+
+            CurrentMood = ClassifyMood(_moodValence, _moodArousal);
         }
 
         private string ClassifyMood(float valence, float arousal)
