@@ -13,7 +13,6 @@ namespace ZAMAEmotionModel {
     readonly EmotionEngine _emotionEngine = new EmotionEngine();
     readonly Dictionary<string, UserEmotionEvent> _events = new Dictionary<string, UserEmotionEvent>(StringComparer.OrdinalIgnoreCase);
     bool _isLoadingConfig;
-    string _lastTriggerVariableValue = string.Empty;
 
     public MainForm() {
 
@@ -67,58 +66,6 @@ namespace ZAMAEmotionModel {
         private void MainForm_Load(object sender, EventArgs e)
         {
             ResetOutputLabels();
-            triggerWatchTimer.Start();
-        }
-
-        public override bool ControlCommand(string command, params string[] parameters)
-        {
-            if (string.Equals(command, "TriggerEvent", StringComparison.OrdinalIgnoreCase))
-            {
-                if (parameters.Length == 0)
-                {
-                    return true;
-                }
-
-                TriggerEventFromExternal(parameters[0]);
-                return true;
-            }
-
-            if (string.Equals(command, "RegisterEvent", StringComparison.OrdinalIgnoreCase))
-            {
-                if (parameters.Length < 3)
-                {
-                    return true;
-                }
-
-                string keyword = parameters[0];
-                if (float.TryParse(parameters[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float valence) &&
-                    float.TryParse(parameters[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float arousal))
-                {
-                    _events[keyword] = new UserEmotionEvent
-                    {
-                        Keyword = keyword,
-                        Valence = Clamp(valence, -10f, 10f),
-                        Arousal = Clamp(arousal, -10f, 10f)
-                    };
-                    SyncConfigFromEvents();
-                    RefreshEventsGrid();
-                }
-                return true;
-            }
-
-            if (string.Equals(command, "GetEmotion", StringComparison.OrdinalIgnoreCase))
-            {
-                ControlCommandReturn = string.Format(
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    "{{\"emotion\":\"{0}\",\"valence\":{1:F3},\"arousal\":{2:F3},\"temperament\":\"{3}\"}}",
-                    _emotionEngine.CurrentMood,
-                    _emotionEngine.MoodValence,
-                    _emotionEngine.MoodArousal,
-                    _emotionEngine.CurrentTemperament);
-                return true;
-            }
-
-            return base.ControlCommand(command, parameters);
         }
 
         private void btnRegister_Click(object sender, EventArgs e)
@@ -187,17 +134,6 @@ namespace ZAMAEmotionModel {
             ARC.Scripting.VariableManager.SetVariable("$Emotion.Arousal", result.Arousal);
 
             UpdateStateLabels();
-        }
-
-        private void TriggerEventFromExternal(string keyword)
-        {
-            if (string.IsNullOrWhiteSpace(keyword))
-            {
-                return;
-            }
-
-            tbTrigger.Text = keyword;
-            btnTrigger_Click(this, EventArgs.Empty);
         }
 
         private void SyncEventsFromConfig()
@@ -284,8 +220,6 @@ namespace ZAMAEmotionModel {
             chkRandomPersonality.Checked = _config.RandomizePersonality;
             chkMoodShift.Checked = _config.AllowMoodShift;
             chkPersonalityShift.Checked = _config.AllowPersonalityShift;
-            watchVariableText.Text = string.IsNullOrWhiteSpace(_config.WatchVariableName) ? "$Emotion.Trigger" : _config.WatchVariableName;
-            chkClearVariable.Checked = _config.ClearVariableAfterUse;
             _isLoadingConfig = false;
         }
 
@@ -380,59 +314,6 @@ namespace ZAMAEmotionModel {
             _emotionEngine.SetShiftOptions(_config.AllowMoodShift, _config.AllowPersonalityShift);
         }
 
-        private void watchVariableText_TextChanged(object sender, EventArgs e)
-        {
-            if (_isLoadingConfig)
-            {
-                return;
-            }
-
-            if (_config == null)
-            {
-                _config = new Configuration();
-            }
-
-            _config.WatchVariableName = watchVariableText.Text.Trim();
-        }
-
-        private void chkClearVariable_CheckedChanged(object sender, EventArgs e)
-        {
-            if (_isLoadingConfig)
-            {
-                return;
-            }
-
-            if (_config == null)
-            {
-                _config = new Configuration();
-            }
-
-            _config.ClearVariableAfterUse = chkClearVariable.Checked;
-        }
-
-        private void triggerWatchTimer_Tick(object sender, EventArgs e)
-        {
-            if (_config == null || string.IsNullOrWhiteSpace(watchVariableText.Text))
-            {
-                return;
-            }
-
-            string variableName = watchVariableText.Text.Trim();
-            string currentValue = ARC.Scripting.VariableManager.GetVariable(variableName) as string;
-
-            if (string.IsNullOrWhiteSpace(currentValue) || string.Equals(currentValue, _lastTriggerVariableValue, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            TriggerEventFromExternal(currentValue);
-            _lastTriggerVariableValue = currentValue;
-
-            if (chkClearVariable.Checked)
-            {
-                ARC.Scripting.VariableManager.SetVariable(variableName, string.Empty);
-            }
-        }
 
         private void btnLoadEvent_Click(object sender, EventArgs e)
         {
