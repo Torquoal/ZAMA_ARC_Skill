@@ -1,0 +1,99 @@
+: Example: Emotion Values Controlling Servo Motors
+: This script reads emotion values and maps them to servo positions
+: 
+: Setup:
+:   1. Add a Servo component (e.g., "EZ-Servo", "Pololu Maestro", etc.)
+:   2. Configure the servo control variable (e.g., $Servo1, $ServoPosition, etc.)
+:   3. Adjust the servo variable names and ranges below to match your setup
+:
+: This example maps:
+:   - Valence (happiness) -> Horizontal head movement (left/right)
+:   - Arousal (energy) -> Vertical head movement (up/down)
+:   - Combined emotion -> Body posture/gesture
+
+PRINT("=== Emotion to Servo Control ===")
+PRINT("Mapping emotions to servo positions...")
+PRINT("")
+
+: Configuration - adjust these for your servos
+: Servo variable names (adjust to match your servo component)
+: Head left/right (valence)
+$servoHorizontal = "$Servo1"
+: Head up/down (arousal)
+$servoVertical = "$Servo2"
+: Body posture (combined)
+$servoBody = "$Servo3"
+
+: Servo ranges (adjust to match your servo limits, typically 0-180 or 500-2500)
+$servoMin = 0
+$servoMax = 180
+$servoCenter = 90
+
+: Emotion value ranges (valence and arousal are typically -10 to +10)
+$emotionMin = -10
+$emotionMax = 10
+
+: Update interval (milliseconds)
+$updateInterval = 500
+
+REPEATWHILE(1)
+  : Get current emotion state
+  $Emotion.Command = "GetEmotion"
+  Sleep(200)
+  
+  : Read emotion values (they're stored as strings, convert to numbers)
+  $valence = $EmotionValence
+  $arousal = $EmotionArousal
+  
+  : Map valence (-10 to +10) to horizontal servo position (left to right)
+  : Negative valence (sad) -> left, Positive valence (happy) -> right
+  $valencePercent = ($valence - $emotionMin) / ($emotionMax - $emotionMin)
+  $horizontalPos = $servoMin + ($valencePercent * ($servoMax - $servoMin))
+  
+  : Map arousal (-10 to +10) to vertical servo position (down to up)
+  : Negative arousal (calm) -> down, Positive arousal (excited) -> up
+  $arousalPercent = ($arousal - $emotionMin) / ($emotionMax - $emotionMin)
+  $verticalPos = $servoMin + ($arousalPercent * ($servoMax - $servoMin))
+  
+  : Calculate body posture based on combined emotion
+  : Use a weighted combination or create gesture based on emotion name
+  $emotionName = $EmotionCurrent
+  IF($emotionName == "Happy" OR $emotionName == "Excited")
+    : Upright, energetic posture
+    $bodyPos = $servoCenter + 30
+  ELSE IF($emotionName == "Sad" OR $emotionName == "Depressed")
+    : Slumped, low posture
+    $bodyPos = $servoCenter - 30
+  ELSE IF($emotionName == "Angry" OR $emotionName == "Furious")
+    : Tense, forward posture
+    $bodyPos = $servoCenter + 20
+  ELSE
+    : Neutral posture
+    $bodyPos = $servoCenter
+  ENDIF
+  
+  : Set servo positions (adjust variable names to match your servo component)
+  : Note: Some servo components use different variable formats
+  : Examples:
+  :   $Servo1 = $horizontalPos
+  :   $ServoPosition1 = $horizontalPos
+  :   ControlCommand("Servo Component", "SetPosition", "1", $horizontalPos)
+  
+  : Round to integers (servos typically need whole numbers)
+  $horizontalPos = ROUND($horizontalPos)
+  $verticalPos = ROUND($verticalPos)
+  $bodyPos = ROUND($bodyPos)
+  
+  : Update servos (uncomment and adjust for your servo component when you have hardware)
+  : $Servo1 = $horizontalPos
+  : $Servo2 = $verticalPos
+  : $Servo3 = $bodyPos
+  
+  : Debug output - shows calculated servo positions
+  : This allows testing the emotion-to-servo mapping logic without physical hardware
+  PRINT("Emotion: " + $emotionName + " | Valence: " + $valence + " | Arousal: " + $arousal)
+  PRINT("  Calculated Servo Positions -> H: " + $horizontalPos + " | V: " + $verticalPos + " | Body: " + $bodyPos)
+  
+  Sleep($updateInterval)
+ENDREPEATWHILE
+

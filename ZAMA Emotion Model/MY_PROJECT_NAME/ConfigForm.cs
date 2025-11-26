@@ -19,34 +19,46 @@ namespace ZAMAEmotionModel {
       InitializeComponent();
     }
 
-    public void SetConfiguration(Configuration config) {
-
-      try {
-
+    /// <summary>
+    /// Loads configuration values into the form's UI controls.
+    /// </summary>
+    /// <param name="config">Configuration object to load from</param>
+    public void SetConfiguration(Configuration config)
+    {
+      try
+      {
         _cf = config;
-
-        tbTestValue.Text = config.TestValue;
-
-      } catch (Exception ex) {
-
+        // Note: ConfigForm currently has no configurable fields
+        // This is a placeholder for future configuration options
+      }
+      catch (Exception ex)
+      {
         MessageBox.Show(ex.Message, "Error loading configuration");
       }
     }
 
-    public Configuration GetConfiguration() {
-    
+    /// <summary>
+    /// Returns the current configuration object.
+    /// </summary>
+    /// <returns>Configuration object with current settings</returns>
+    public Configuration GetConfiguration()
+    {
       return _cf;
     }
 
-    private void btnSave_Click(object sender, EventArgs e) {
-
-      try {
-
-        _cf.TestValue = tbTestValue.Text;
-      } catch (Exception ex) {
-
+    /// <summary>
+    /// Handles the Save button click. Saves configuration and closes dialog.
+    /// </summary>
+    private void btnSave_Click(object sender, EventArgs e)
+    {
+      try
+      {
+        // Note: ConfigForm currently has no configurable fields
+        // This is a placeholder for future configuration options
+      }
+      catch (Exception ex)
+      {
         MessageBox.Show(ex.Message, "Error saving configuration");
-
         return;
       }
 

@@ -1,0 +1,78 @@
+: Example: Voice Recognition Triggering Emotion Events
+: This script watches for voice recognition keywords and triggers emotion events
+: 
+: Setup:
+:   1. Add a Voice Recognition component (e.g., "Speech Recognition" or "Voice Command")
+:   2. Configure it to set a variable when keywords are detected (e.g., $VoiceCommand)
+:   3. Run this script to watch that variable and trigger emotion events
+:
+: Note: You'll need to register the emotion events first using the Emotion Model UI
+: or via script commands like: $Emotion.Command = "RegisterEvent:happy:8:6"
+
+PRINT("=== Voice to Emotion Integration ===")
+PRINT("Watching for voice commands...")
+
+: Register emotion events for common voice commands
+: (You can also do this in the Emotion Model UI)
+$Emotion.Command = "RegisterEvent:happy:8:6"
+Sleep(500)
+$Emotion.Command = "RegisterEvent:sad:-7:-3"
+Sleep(500)
+$Emotion.Command = "RegisterEvent:excited:9:8"
+Sleep(500)
+$Emotion.Command = "RegisterEvent:angry:-8:7"
+Sleep(500)
+$Emotion.Command = "RegisterEvent:calm:5:-2"
+Sleep(500)
+
+PRINT("Registered emotion events for: happy, sad, excited, angry, calm")
+PRINT("")
+
+: Watch for voice commands and trigger corresponding emotion events
+: Adjust the variable name to match your voice recognition component
+: Common variable names: $VoiceCommand, $SpeechText, $RecognizedWord
+
+$lastVoiceCommand = ""
+
+REPEATWHILE(1)
+  : Get the current voice command (adjust variable name as needed)
+  $currentCommand = $VoiceCommand
+  
+  : Check if we have a new command
+  IF($currentCommand != $lastVoiceCommand AND $currentCommand != "")
+    PRINT("Voice detected: " + $currentCommand)
+    
+    : Convert voice command to lowercase for matching
+    $commandLower = LOWER($currentCommand)
+    
+    : Trigger emotion event based on voice command
+    IF($commandLower == "happy" OR $commandLower == "joy" OR $commandLower == "glad")
+      $Emotion.Command = "TriggerEvent:happy"
+      PRINT("  -> Triggered 'happy' emotion event")
+    ELSE IF($commandLower == "sad" OR $commandLower == "unhappy" OR $commandLower == "depressed")
+      $Emotion.Command = "TriggerEvent:sad"
+      PRINT("  -> Triggered 'sad' emotion event")
+    ELSE IF($commandLower == "excited" OR $commandLower == "excitement" OR $commandLower == "thrilled")
+      $Emotion.Command = "TriggerEvent:excited"
+      PRINT("  -> Triggered 'excited' emotion event")
+    ELSE IF($commandLower == "angry" OR $commandLower == "mad" OR $commandLower == "furious")
+      $Emotion.Command = "TriggerEvent:angry"
+      PRINT("  -> Triggered 'angry' emotion event")
+    ELSE IF($commandLower == "calm" OR $commandLower == "relaxed" OR $commandLower == "peaceful")
+      $Emotion.Command = "TriggerEvent:calm"
+      PRINT("  -> Triggered 'calm' emotion event")
+    ELSE
+      PRINT("  -> No emotion event for: " + $currentCommand)
+    ENDIF
+    
+    : Read the emotional response (TriggerEvent automatically updates the variables)
+    Sleep(500)
+    PRINT("  Emotional Response: " + $EmotionCurrent + " (Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal + ")")
+    PRINT("")
+    
+    $lastVoiceCommand = $currentCommand
+  ENDIF
+  
+  Sleep(100)
+ENDREPEATWHILE
+

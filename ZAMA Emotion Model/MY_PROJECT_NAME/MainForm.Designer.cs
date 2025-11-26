@@ -53,6 +53,12 @@ namespace ZAMAEmotionModel {
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.cooldownStatusLabel = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label9 = new System.Windows.Forms.Label();
+            this.cooldownMinText = new System.Windows.Forms.TextBox();
+            this.cooldownMaxText = new System.Windows.Forms.TextBox();
+            this.btnApplyCooldown = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.label7 = new System.Windows.Forms.Label();
@@ -172,7 +178,6 @@ namespace ZAMAEmotionModel {
             this.label4.Size = new System.Drawing.Size(71, 13);
             this.label4.TabIndex = 12;
             this.label4.Text = "Event to Test";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
             // 
             // moodValueLabel
             // 
@@ -195,7 +200,7 @@ namespace ZAMAEmotionModel {
             // chkRandomPersonality
             // 
             this.chkRandomPersonality.AutoSize = true;
-            this.chkRandomPersonality.Location = new System.Drawing.Point(368, 101);
+            this.chkRandomPersonality.Location = new System.Drawing.Point(386, 101);
             this.chkRandomPersonality.Name = "chkRandomPersonality";
             this.chkRandomPersonality.Size = new System.Drawing.Size(170, 17);
             this.chkRandomPersonality.TabIndex = 17;
@@ -267,7 +272,6 @@ namespace ZAMAEmotionModel {
             this.eventsGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.eventsGrid.Size = new System.Drawing.Size(404, 213);
             this.eventsGrid.TabIndex = 23;
-            this.eventsGrid.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.eventsGrid_CellContentClick);
             // 
             // colKeyword
             // 
@@ -316,7 +320,6 @@ namespace ZAMAEmotionModel {
             this.label5.Size = new System.Drawing.Size(151, 13);
             this.label5.TabIndex = 26;
             this.label5.Text = "Personality Valence (-10 to 10)";
-            this.label5.Click += new System.EventHandler(this.label5_Click);
             // 
             // label6
             // 
@@ -326,7 +329,6 @@ namespace ZAMAEmotionModel {
             this.label6.Size = new System.Drawing.Size(147, 13);
             this.label6.TabIndex = 27;
             this.label6.Text = "Personality Arousal (-10 to 10)";
-            this.label6.Click += new System.EventHandler(this.label6_Click);
             // 
             // groupBox1
             // 
@@ -340,12 +342,69 @@ namespace ZAMAEmotionModel {
             this.groupBox1.Controls.Add(this.chkRandomPersonality);
             this.groupBox1.Controls.Add(this.personalityValueLabel);
             this.groupBox1.Controls.Add(this.moodValueLabel);
+            this.groupBox1.Controls.Add(this.cooldownStatusLabel);
+            this.groupBox1.Controls.Add(this.label8);
+            this.groupBox1.Controls.Add(this.label9);
+            this.groupBox1.Controls.Add(this.cooldownMinText);
+            this.groupBox1.Controls.Add(this.cooldownMaxText);
+            this.groupBox1.Controls.Add(this.btnApplyCooldown);
             this.groupBox1.Location = new System.Drawing.Point(18, 402);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(592, 121);
+            this.groupBox1.Size = new System.Drawing.Size(592, 224);
             this.groupBox1.TabIndex = 28;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Personality";
+            this.groupBox1.Text = "Personality & Cooldown";
+            // 
+            // cooldownStatusLabel
+            // 
+            this.cooldownStatusLabel.AutoSize = true;
+            this.cooldownStatusLabel.Location = new System.Drawing.Point(10, 125);
+            this.cooldownStatusLabel.Name = "cooldownStatusLabel";
+            this.cooldownStatusLabel.Size = new System.Drawing.Size(119, 13);
+            this.cooldownStatusLabel.TabIndex = 23;
+            this.cooldownStatusLabel.Text = "Cooldown: Ready (0ms)";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(10, 142);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(49, 13);
+            this.label8.TabIndex = 24;
+            this.label8.Text = "Min (ms):";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(178, 142);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(52, 13);
+            this.label9.TabIndex = 25;
+            this.label9.Text = "Max (ms):";
+            // 
+            // cooldownMinText
+            // 
+            this.cooldownMinText.Location = new System.Drawing.Point(83, 139);
+            this.cooldownMinText.Name = "cooldownMinText";
+            this.cooldownMinText.Size = new System.Drawing.Size(80, 20);
+            this.cooldownMinText.TabIndex = 26;
+            // 
+            // cooldownMaxText
+            // 
+            this.cooldownMaxText.Location = new System.Drawing.Point(254, 139);
+            this.cooldownMaxText.Name = "cooldownMaxText";
+            this.cooldownMaxText.Size = new System.Drawing.Size(80, 20);
+            this.cooldownMaxText.TabIndex = 27;
+            // 
+            // btnApplyCooldown
+            // 
+            this.btnApplyCooldown.Location = new System.Drawing.Point(356, 137);
+            this.btnApplyCooldown.Name = "btnApplyCooldown";
+            this.btnApplyCooldown.Size = new System.Drawing.Size(125, 23);
+            this.btnApplyCooldown.TabIndex = 28;
+            this.btnApplyCooldown.Text = "Apply Cooldown";
+            this.btnApplyCooldown.UseVisualStyleBackColor = true;
+            this.btnApplyCooldown.Click += new System.EventHandler(this.btnApplyCooldown_Click);
             // 
             // groupBox2
             // 
@@ -365,7 +424,6 @@ namespace ZAMAEmotionModel {
             this.groupBox2.TabIndex = 29;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Emotion Events";
-            this.groupBox2.Enter += new System.EventHandler(this.groupBox2_Enter);
             // 
             // groupBox3
             // 
@@ -381,7 +439,7 @@ namespace ZAMAEmotionModel {
             this.groupBox3.Size = new System.Drawing.Size(588, 75);
             this.groupBox3.TabIndex = 30;
             this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Emotion Response Result";
+            this.groupBox3.Text = "Test Emotion Response Result";
             // 
             // label7
             // 
@@ -394,7 +452,7 @@ namespace ZAMAEmotionModel {
             // 
             // MainForm
             // 
-            this.ClientSize = new System.Drawing.Size(630, 547);
+            this.ClientSize = new System.Drawing.Size(630, 622);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
@@ -447,5 +505,11 @@ namespace ZAMAEmotionModel {
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label cooldownStatusLabel;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.TextBox cooldownMinText;
+        private System.Windows.Forms.TextBox cooldownMaxText;
+        private System.Windows.Forms.Button btnApplyCooldown;
     }
 }

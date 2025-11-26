@@ -1,0 +1,116 @@
+: Example: Complete Integration - Voice Input -> Emotion -> Servo Output
+: This demonstrates a full loop:
+:   1. Voice recognition triggers emotion events
+:   2. Emotion values control servo positions (robot movement)
+:
+: Setup:
+:   1. Add Voice Recognition component
+:   2. Add Servo component(s) (optional - script calculates positions even without hardware)
+:   3. Register emotion events (see Example_VoiceToEmotion.ezs)
+:   4. Adjust variable names below to match your components
+
+PRINT("=== Complete Emotion Integration Example ===")
+PRINT("Voice -> Emotion -> Servo")
+PRINT("")
+
+: Initialize - Register emotion events
+PRINT("Registering emotion events...")
+$Emotion.Command = "RegisterEvent:happy:8:6"
+Sleep(300)
+$Emotion.Command = "RegisterEvent:sad:-7:-3"
+Sleep(300)
+$Emotion.Command = "RegisterEvent:excited:9:8"
+Sleep(300)
+$Emotion.Command = "RegisterEvent:angry:-8:7"
+Sleep(300)
+$Emotion.Command = "RegisterEvent:calm:5:-2"
+Sleep(300)
+PRINT("Events registered.")
+PRINT("")
+
+: Configuration
+$servoHorizontal = "$Servo1"
+$servoVertical = "$Servo2"
+$servoMin = 0
+$servoMax = 180
+$servoCenter = 90
+$emotionMin = -10
+$emotionMax = 10
+
+$lastVoiceCommand = ""
+$lastEmotion = ""
+$updateInterval = 500
+
+PRINT("Starting main loop...")
+PRINT("Say: happy, sad, excited, angry, or calm")
+PRINT("")
+
+REPEATWHILE(1)
+  : ============================================
+  : STEP 1: Voice Input -> Emotion Event
+  : ============================================
+  $currentCommand = $VoiceCommand  : Adjust variable name as needed
+  
+  IF($currentCommand != $lastVoiceCommand AND $currentCommand != "")
+    $commandLower = LOWER($currentCommand)
+    
+    : Trigger emotion event
+    IF($commandLower == "happy")
+      $Emotion.Command = "TriggerEvent:happy"
+    ELSE IF($commandLower == "sad")
+      $Emotion.Command = "TriggerEvent:sad"
+    ELSE IF($commandLower == "excited")
+      $Emotion.Command = "TriggerEvent:excited"
+    ELSE IF($commandLower == "angry")
+      $Emotion.Command = "TriggerEvent:angry"
+    ELSE IF($commandLower == "calm")
+      $Emotion.Command = "TriggerEvent:calm"
+    ENDIF
+    
+    Sleep(300)
+    $lastVoiceCommand = $currentCommand
+  ENDIF
+  
+  : ============================================
+  : STEP 2: Read Emotion Response
+  : ============================================
+  : TriggerEvent automatically updates the variables, so we can read them directly
+  : (Using GetEmotion here to refresh in case we're polling continuously)
+  $Emotion.Command = "GetEmotion"
+  Sleep(200)
+  
+  $currentEmotion = $EmotionCurrent
+  $valence = $EmotionValence
+  $arousal = $EmotionArousal
+  
+  : ============================================
+  : STEP 3: Emotion -> Servo Control
+  : ============================================
+  : Map valence to horizontal servo (head left/right)
+  $valencePercent = ($valence - $emotionMin) / ($emotionMax - $emotionMin)
+  $horizontalPos = $servoMin + ($valencePercent * ($servoMax - $servoMin))
+  $horizontalPos = ROUND($horizontalPos)
+  
+  : Map arousal to vertical servo (head up/down)
+  $arousalPercent = ($arousal - $emotionMin) / ($emotionMax - $emotionMin)
+  $verticalPos = $servoMin + ($arousalPercent * ($servoMax - $servoMin))
+  $verticalPos = ROUND($verticalPos)
+  
+  : Update servos (uncomment and adjust for your servo component)
+  : $Servo1 = $horizontalPos
+  : $Servo2 = $verticalPos
+  
+  : ============================================
+  : STEP 4: Display Results
+  : ============================================
+  IF($currentEmotion != $lastEmotion)
+    PRINT("Emotion: " + $currentEmotion + " | Valence: " + $valence + " | Arousal: " + $arousal)
+    PRINT("  Servos -> H: " + $horizontalPos + " | V: " + $verticalPos)
+    PRINT("")
+    
+    $lastEmotion = $currentEmotion
+  ENDIF
+  
+  Sleep($updateInterval)
+ENDREPEATWHILE
+

@@ -1,0 +1,108 @@
+: Example: Event-Driven Servo Movement
+: This script moves servos only when emotion events are triggered
+: Unlike the continuous polling script, this responds to each event with a single movement
+:
+: Setup:
+:   1. Register emotion events (via UI or script)
+:   2. Adjust servo variable names below to match your servo component
+:   3. Trigger events via voice, script, or other input
+:
+: This script watches for emotion changes and moves servos once per event
+
+PRINT("=== Event-Driven Servo Movement ===")
+PRINT("Servos will move when emotion events are triggered")
+PRINT("")
+
+: Configuration - adjust these for your servos
+: Servo variable names (adjust to match your servo component)
+: Head left/right (valence)
+$servoHorizontal = "$Servo1"
+: Head up/down (arousal)
+$servoVertical = "$Servo2"
+: Body posture (combined)
+$servoBody = "$Servo3"
+
+: Servo ranges (adjust to match your servo limits, typically 0-180 or 500-2500)
+$servoMin = 0
+$servoMax = 180
+$servoCenter = 90
+
+: Emotion value ranges (valence and arousal are typically -10 to +10)
+$emotionMin = -10
+$emotionMax = 10
+
+: Track the last emotion to detect changes
+$lastEmotion = ""
+
+PRINT("Watching for emotion events...")
+PRINT("Trigger events via voice, script, or UI to see servo movements")
+PRINT("")
+
+REPEATWHILE(1)
+  : Get current emotion state
+  $Emotion.Command = "GetEmotion"
+  Sleep(200)
+  
+  : Check if emotion has changed (new event triggered)
+  $currentEmotion = $EmotionCurrent
+  $valence = $EmotionValence
+  $arousal = $EmotionArousal
+  
+  IF($currentEmotion != $lastEmotion AND $lastEmotion != "")
+    : New event detected! Calculate and move servos
+    PRINT("Event detected! Emotion changed to: " + $currentEmotion)
+    PRINT("  Valence: " + $valence + " | Arousal: " + $arousal)
+    
+    : Map valence (-10 to +10) to horizontal servo position (left to right)
+    : Negative valence (sad) -> left, Positive valence (happy) -> right
+    $valencePercent = ($valence - $emotionMin) / ($emotionMax - $emotionMin)
+    $horizontalPos = $servoMin + ($valencePercent * ($servoMax - $servoMin))
+    
+    : Map arousal (-10 to +10) to vertical servo position (down to up)
+    : Negative arousal (calm) -> down, Positive arousal (excited) -> up
+    $arousalPercent = ($arousal - $emotionMin) / ($emotionMax - $emotionMin)
+    $verticalPos = $servoMin + ($arousalPercent * ($servoMax - $servoMin))
+    
+    : Calculate body posture based on emotion name
+    $emotionName = $currentEmotion
+    IF($emotionName == "Happy" OR $emotionName == "Excited")
+      : Upright, energetic posture
+      $bodyPos = $servoCenter + 30
+    ELSE IF($emotionName == "Sad" OR $emotionName == "Depressed")
+      : Slumped, low posture
+      $bodyPos = $servoCenter - 30
+    ELSE IF($emotionName == "Angry" OR $emotionName == "Furious")
+      : Tense, forward posture
+      $bodyPos = $servoCenter + 20
+    ELSE
+      : Neutral posture
+      $bodyPos = $servoCenter
+    ENDIF
+    
+    : Round to integers (servos typically need whole numbers)
+    $horizontalPos = ROUND($horizontalPos)
+    $verticalPos = ROUND($verticalPos)
+    $bodyPos = ROUND($bodyPos)
+    
+    : Move servos to new positions (uncomment and adjust for your servo component)
+    : $Servo1 = $horizontalPos
+    : $Servo2 = $verticalPos
+    : $Servo3 = $bodyPos
+    
+    PRINT("  Moving servos -> H: " + $horizontalPos + " | V: " + $verticalPos + " | Body: " + $bodyPos)
+    PRINT("")
+    
+    : Update last emotion to track next change
+    $lastEmotion = $currentEmotion
+  ELSE IF($lastEmotion == "")
+    : First run - just initialize, don't move
+    $lastEmotion = $currentEmotion
+    PRINT("Initial emotion state: " + $currentEmotion)
+    PRINT("Waiting for events...")
+    PRINT("")
+  ENDIF
+  
+  : Check frequently for emotion changes
+  Sleep(100)
+ENDREPEATWHILE
+

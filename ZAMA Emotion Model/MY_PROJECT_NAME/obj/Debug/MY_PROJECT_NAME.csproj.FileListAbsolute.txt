@@ -6,7 +6,6 @@ C:\My Documents\SVN\Developer - Windows\EZ-Builder\EZ-Builder\Resources\Behavior
 C:\ProgramData\ARC\Plugins\20556bb2-91d7-4e6e-8bd7-272733fd970f\plugin.xml
 C:\ProgramData\ARC\Plugins\20556bb2-91d7-4e6e-8bd7-272733fd970f\ZAMAEmotionModel.dll
 C:\ProgramData\ARC\Plugins\20556bb2-91d7-4e6e-8bd7-272733fd970f\ZAMAEmotionModel.pdb
-C:\Users\smd56j\Documents\ARC_Skill\ARC Skill\ZAMA Emotion Model\MY_PROJECT_NAME\obj\Debug\MY_PROJECT_NAME.csproj.AssemblyReference.cache
 C:\Users\smd56j\Documents\ARC_Skill\ARC Skill\ZAMA Emotion Model\MY_PROJECT_NAME\obj\Debug\ZAMAEmotionModel.ConfigForm.resources
 C:\Users\smd56j\Documents\ARC_Skill\ARC Skill\ZAMA Emotion Model\MY_PROJECT_NAME\obj\Debug\ZAMAEmotionModel.MainForm.resources
 C:\Users\smd56j\Documents\ARC_Skill\ARC Skill\ZAMA Emotion Model\MY_PROJECT_NAME\obj\Debug\MY_PROJECT_NAME.csproj.GenerateResource.cache

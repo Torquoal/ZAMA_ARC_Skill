@@ -1,71 +1,111 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using ARC;
 
-namespace ZAMAEmotionModel {
-
-  public partial class MainForm : ARC.UCForms.FormPluginMaster {
-
-    Configuration _config;
-    readonly EmotionEngine _emotionEngine = new EmotionEngine();
-    readonly Dictionary<string, UserEmotionEvent> _events = new Dictionary<string, UserEmotionEvent>(StringComparer.OrdinalIgnoreCase);
-    bool _isLoadingConfig;
-    private System.Windows.Forms.Timer _commandWatcherTimer;
-    private string _lastCommandValue = string.Empty;
-    private EmotionEngine.EmotionalResponseResult? _lastResponse = null; // Store last calculated response
-
-    public MainForm() {
-
-      InitializeComponent();
-
-      // show a config button in the title bar. Set this to false if you do not have a config form.
-      ConfigButton = true;
-    }
-
+namespace ZAMAEmotionModel
+{
     /// <summary>
-    /// Set the configuration from the project file when loaded.
-    /// We'll extract the _config class that's from the project file.
+    /// Main form for the ZAMA Emotion Model ARC skill.
+    /// 
+    /// This form provides:
+    /// - UI for registering and managing emotion events
+    /// - Controls for setting robot personality/temperament
+    /// - Display of current mood and emotional responses
+    /// - Integration with ARC via variable watcher for script commands
+    /// - Cooldown system configuration and monitoring
+    /// 
+    /// The skill communicates with other ARC components via:
+    /// - Input: Watches $Emotion.Command variable for commands from scripts
+    /// - Output: Sets $EmotionCurrent, $EmotionValence, $EmotionArousal, etc. for other components to read
     /// </summary>
-    public override void SetConfiguration(ARC.Config.Sub.PluginV1 cf) {
+    public partial class MainForm : ARC.UCForms.FormPluginMaster
+    {
+        // Configuration and state management
+        private Configuration _config;  // Persisted configuration loaded from ARC project
+        private readonly EmotionEngine _emotionEngine = new EmotionEngine();  // Core emotion calculation engine
+        private readonly Dictionary<string, UserEmotionEvent> _events = new Dictionary<string, UserEmotionEvent>(StringComparer.OrdinalIgnoreCase);  // In-memory event registry
+        private bool _isLoadingConfig;  // Flag to prevent event handlers from firing during config load
+        
+        // ARC integration - command watcher
+        private System.Windows.Forms.Timer _commandWatcherTimer;  // Polls $Emotion.Command for script commands
+        private string _lastCommandValue = string.Empty;  // Tracks last processed command to avoid duplicates
+        
+        // Cooldown system UI updates
+        private System.Windows.Forms.Timer _cooldownUpdateTimer;  // Updates cooldown status display
+        
+        // Response tracking
+        private EmotionEngine.EmotionalResponseResult? _lastResponse = null;  // Stores last calculated event response
 
-      _config = (Configuration)cf.GetCustomObjectV2(typeof(Configuration)) ?? new Configuration();
+        /// <summary>
+        /// Initializes the main form and enables the config button in the title bar.
+        /// </summary>
+        public MainForm()
+        {
+            InitializeComponent();
+            ConfigButton = true;  // Show config button in ARC title bar
+        }
 
-      SyncEventsFromConfig();
-      ApplyConfigToUi();
-      UpdateEngineFromConfig();
+        /// <summary>
+        /// Called by ARC when a project is loaded.
+        /// Restores configuration from the project file and applies it to the UI and engine.
+        /// </summary>
+        /// <param name="cf">ARC configuration object containing persisted data</param>
+        public override void SetConfiguration(ARC.Config.Sub.PluginV1 cf)
+        {
+            // Load configuration from project file, or create new if none exists
+            _config = (Configuration)cf.GetCustomObjectV2(typeof(Configuration)) ?? new Configuration();
 
-      base.SetConfiguration(cf);
-    }
+            // Synchronize in-memory event dictionary with loaded configuration
+            SyncEventsFromConfig();
+            
+            // Apply configuration values to UI controls
+            ApplyConfigToUi();
+            
+            // Apply configuration to emotion engine
+            UpdateEngineFromConfig();
 
-    /// <summary>
-    /// When the project is saving, give it a copy of our config
-    /// </summary>
-    public override ARC.Config.Sub.PluginV1 GetConfiguration() {
+            base.SetConfiguration(cf);
+        }
 
-      SyncConfigFromEvents();
-      _cf.SetCustomObjectV2(_config);
+        /// <summary>
+        /// Called by ARC when a project is being saved.
+        /// Saves current configuration (including events) to the project file.
+        /// </summary>
+        /// <returns>ARC configuration object with current settings</returns>
+        public override ARC.Config.Sub.PluginV1 GetConfiguration()
+        {
+            // Sync events from in-memory dictionary to config before saving
+            SyncConfigFromEvents();
+            
+            // Store configuration in ARC project file
+            _cf.SetCustomObjectV2(_config);
 
-      return base.GetConfiguration();
-    }
+            return base.GetConfiguration();
+        }
 
-    /// <summary>
-    /// The user pressed the config button in the title bar. Show the config menu and handle the changes to the config.
-    /// </summary>
-    public override void ConfigPressed() {
+        /// <summary>
+        /// Called when user clicks the config button in the title bar.
+        /// Opens the configuration form for advanced settings.
+        /// </summary>
+        public override void ConfigPressed()
+        {
+            using (var form = new ConfigForm())
+            {
+                form.SetConfiguration(_config);
 
-      using (var form = new ConfigForm()) {
+                if (form.ShowDialog() != DialogResult.OK)
+                    return;
 
-        form.SetConfiguration(_config);
-
-        if (form.ShowDialog() != DialogResult.OK)
-          return;
-
-        _config = form.GetConfiguration();
-      }
-    }
+                _config = form.GetConfiguration();
+            }
+        }
+        /// <summary>
+        /// Called when the form loads. Initializes timers, UI state, and ARC variable integration.
+        /// </summary>
         private void MainForm_Load(object sender, EventArgs e)
         {
             ResetOutputLabels();
@@ -81,15 +121,113 @@ namespace ZAMAEmotionModel {
             UpdateEmotionVariables();
             
             // Set up timer to watch for commands via ARC variable
+            // Scripts write commands to $Emotion.Command, this timer processes them
             _commandWatcherTimer = new System.Windows.Forms.Timer();
-            _commandWatcherTimer.Interval = 200; // Check every 200ms
+            _commandWatcherTimer.Interval = 200;  // Check every 200ms
             _commandWatcherTimer.Tick += CommandWatcherTimer_Tick;
             _commandWatcherTimer.Start();
+            
+            // Set up timer to update cooldown status display
+            _cooldownUpdateTimer = new System.Windows.Forms.Timer();
+            _cooldownUpdateTimer.Interval = 100;  // Update every 100ms for smooth countdown
+            _cooldownUpdateTimer.Tick += CooldownUpdateTimer_Tick;
+            _cooldownUpdateTimer.Start();
+            
+            // Initialize cooldown text boxes with current values (from config or defaults)
+            if (_config != null)
+            {
+                cooldownMinText.Text = _config.MinCooldownMs.ToString();
+                cooldownMaxText.Text = _config.MaxCooldownMs.ToString();
+                _emotionEngine.MinCooldownMs = _config.MinCooldownMs;
+                _emotionEngine.MaxCooldownMs = _config.MaxCooldownMs;
+            }
+            else
+            {
+                cooldownMinText.Text = _emotionEngine.MinCooldownMs.ToString();
+                cooldownMaxText.Text = _emotionEngine.MaxCooldownMs.ToString();
+            }
+            
+            UpdateCooldownStatus();
         }
 
+        /// <summary>
+        /// Timer tick handler that updates the cooldown status display.
+        /// </summary>
+        private void CooldownUpdateTimer_Tick(object sender, EventArgs e)
+        {
+            UpdateCooldownStatus();
+        }
+
+        /// <summary>
+        /// Updates the cooldown status label to show remaining time or ready state.
+        /// </summary>
+        private void UpdateCooldownStatus()
+        {
+            if (_emotionEngine.CanProcessEvent())
+            {
+                int currentCooldown = _emotionEngine.GetCurrentCooldownMs();
+                float currentArousal = _emotionEngine.MoodArousal;
+                cooldownStatusLabel.Text = $"Cooldown: Ready (Current: {currentCooldown}ms @ Arousal: {currentArousal:F1})";
+                cooldownStatusLabel.ForeColor = Color.Green;
+            }
+            else
+            {
+                int remaining = _emotionEngine.GetRemainingCooldownMs();
+                float currentArousal = _emotionEngine.MoodArousal;
+                int currentCooldown = _emotionEngine.GetCurrentCooldownMs();
+                cooldownStatusLabel.Text = $"Cooldown: {remaining}ms / {currentCooldown}ms (Arousal: {currentArousal:F1})";
+                cooldownStatusLabel.ForeColor = Color.Orange;
+            }
+        }
+
+        /// <summary>
+        /// Handles the Apply Cooldown button click. Validates and applies new cooldown settings.
+        /// </summary>
+        private void btnApplyCooldown_Click(object sender, EventArgs e)
+        {
+            if (int.TryParse(cooldownMinText.Text, out int minCooldown) &&
+                int.TryParse(cooldownMaxText.Text, out int maxCooldown))
+            {
+                if (minCooldown < 0)
+                {
+                    MessageBox.Show("Minimum cooldown must be 0 or greater.", "Invalid Value", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                if (maxCooldown < minCooldown)
+                {
+                    MessageBox.Show("Maximum cooldown must be greater than or equal to minimum cooldown.", "Invalid Value", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                _emotionEngine.MinCooldownMs = minCooldown;
+                _emotionEngine.MaxCooldownMs = maxCooldown;
+                
+                // Save to config
+                if (_config != null)
+                {
+                    _config.MinCooldownMs = minCooldown;
+                    _config.MaxCooldownMs = maxCooldown;
+                }
+                
+                MessageBox.Show($"Cooldown settings updated:\nMin: {minCooldown}ms\nMax: {maxCooldown}ms", "Settings Applied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                UpdateCooldownStatus();
+            }
+            else
+            {
+                MessageBox.Show("Please enter valid numbers for cooldown values.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+
+        /// <summary>
+        /// Timer tick handler that watches for commands from ARC scripts.
+        /// Scripts write commands to $Emotion.Command in the format "COMMAND:param1:param2".
+        /// This method polls that variable, parses commands, and executes them.
+        /// </summary>
         private void CommandWatcherTimer_Tick(object sender, EventArgs e)
         {
-            // Watch $Emotion.Command variable for incoming commands
+            // Read command from ARC variable
             string commandVar = null;
             try
             {
@@ -101,15 +239,16 @@ namespace ZAMAEmotionModel {
                 return;
             }
             
+            // Skip if no command or same as last processed command (avoid duplicate processing)
             if (string.IsNullOrWhiteSpace(commandVar) || commandVar == _lastCommandValue)
             {
-                return; // No new command
+                return;
             }
 
             System.Diagnostics.Debug.WriteLine($"CommandWatcherTimer_Tick: Raw commandVar='{commandVar}' (length={commandVar?.Length ?? 0})");
             _lastCommandValue = commandVar;
             
-            // Remove outer quotes if the entire string is quoted
+            // Remove outer quotes if the entire string is quoted (EZ-Script may add quotes)
             if (commandVar.StartsWith("\"") && commandVar.EndsWith("\""))
             {
                 commandVar = commandVar.Substring(1, commandVar.Length - 2);
@@ -128,39 +267,14 @@ namespace ZAMAEmotionModel {
                 return;
             }
 
-            string cmd = parts[0].Trim();
-            // Remove quotes if present (shouldn't be needed after outer quote removal, but just in case)
-            if (cmd.StartsWith("\"") && cmd.EndsWith("\""))
-            {
-                cmd = cmd.Substring(1, cmd.Length - 2);
-            }
-            else if (cmd.StartsWith("\""))
-            {
-                cmd = cmd.Substring(1);
-            }
-            else if (cmd.EndsWith("\""))
-            {
-                cmd = cmd.Substring(0, cmd.Length - 1);
-            }
+            // Extract command name and remove any quotes
+            string cmd = RemoveQuotes(parts[0].Trim());
             
+            // Extract parameters and remove quotes from each
             string[] parameters = new string[parts.Length - 1];
             for (int i = 1; i < parts.Length; i++)
             {
-                string param = parts[i].Trim();
-                // Remove quotes from parameters too
-                if (param.StartsWith("\"") && param.EndsWith("\""))
-                {
-                    param = param.Substring(1, param.Length - 2);
-                }
-                else if (param.StartsWith("\""))
-                {
-                    param = param.Substring(1);
-                }
-                else if (param.EndsWith("\""))
-                {
-                    param = param.Substring(0, param.Length - 1);
-                }
-                parameters[i - 1] = param;
+                parameters[i - 1] = RemoveQuotes(parts[i].Trim());
             }
 
             System.Diagnostics.Debug.WriteLine($"CommandWatcherTimer_Tick: Parsed command='{cmd}', parameters=[{string.Join(", ", parameters)}]");
@@ -187,7 +301,7 @@ namespace ZAMAEmotionModel {
                 System.Diagnostics.Debug.WriteLine($"Error processing command '{cmd}': {ex.Message}\n{ex.StackTrace}");
             }
             
-            // Clear the variable after processing
+            // Clear the variable after processing so same command isn't processed again
             try
             {
                 ARC.Scripting.VariableManager.SetVariable("$Emotion.Command", string.Empty);
@@ -198,6 +312,45 @@ namespace ZAMAEmotionModel {
             }
         }
 
+        /// <summary>
+        /// Helper method to remove surrounding quotes from a string.
+        /// Handles cases where quotes are on both ends, just start, or just end.
+        /// </summary>
+        private static string RemoveQuotes(string str)
+        {
+            if (string.IsNullOrEmpty(str))
+                return str;
+            
+            // Remove quotes from both ends
+            if (str.StartsWith("\"") && str.EndsWith("\""))
+            {
+                return str.Substring(1, str.Length - 2);
+            }
+            // Remove quote from start only
+            else if (str.StartsWith("\""))
+            {
+                return str.Substring(1);
+            }
+            // Remove quote from end only
+            else if (str.EndsWith("\""))
+            {
+                return str.Substring(0, str.Length - 1);
+            }
+            
+            return str;
+        }
+
+        /// <summary>
+        /// Processes a command received from an ARC script.
+        /// Commands are case-insensitive and support various operations:
+        /// - TriggerEvent:keyword - Triggers an emotion event
+        /// - RegisterEvent:keyword:valence:arousal - Registers a new event
+        /// - GetEmotion - Updates ARC variables with current emotion state
+        /// - GetMood - Updates ARC variables with persistent mood state
+        /// - ListEvents - Returns list of registered events
+        /// </summary>
+        /// <param name="command">Command name (case-insensitive)</param>
+        /// <param name="parameters">Command parameters</param>
         private void ProcessCommand(string command, string[] parameters)
         {
             System.Diagnostics.Debug.WriteLine($"ProcessCommand: command='{command}', parameters.Length={parameters?.Length ?? 0}");
@@ -206,7 +359,7 @@ namespace ZAMAEmotionModel {
                 System.Diagnostics.Debug.WriteLine($"ProcessCommand: parameters = [{string.Join("|", parameters)}]");
             }
             
-            // Handle "TriggerEvent" command
+            // Handle "TriggerEvent" command: TriggerEvent:keyword
             if (string.Equals(command, "TriggerEvent", StringComparison.OrdinalIgnoreCase))
             {
                 System.Diagnostics.Debug.WriteLine($"TriggerEvent command received. Parameters: {string.Join(", ", parameters ?? new string[0])}");
@@ -225,8 +378,7 @@ namespace ZAMAEmotionModel {
                 return;
             }
 
-            // Handle "RegisterEvent" command: RegisterEvent keyword valence arousal
-            System.Diagnostics.Debug.WriteLine($"ProcessCommand: Checking if command '{command}' matches 'RegisterEvent' (case-insensitive)");
+            // Handle "RegisterEvent" command: RegisterEvent:keyword:valence:arousal
             if (string.Equals(command, "RegisterEvent", StringComparison.OrdinalIgnoreCase))
             {
                 System.Diagnostics.Debug.WriteLine($"RegisterEvent command MATCHED! Parameters: {string.Join(", ", parameters ?? new string[0])}");
@@ -265,7 +417,7 @@ namespace ZAMAEmotionModel {
             }
 
             // Handle "GetEmotion" command - updates ARC variables with current emotion state
-            // Returns both the immediate response (last event) and persistent mood state
+            // Updates both immediate response (last event) and persistent mood state
             if (string.Equals(command, "GetEmotion", StringComparison.OrdinalIgnoreCase))
             {
                 System.Diagnostics.Debug.WriteLine($"GetEmotion command received. _lastResponse.HasValue={_lastResponse.HasValue}");
@@ -278,7 +430,7 @@ namespace ZAMAEmotionModel {
                 return;
             }
 
-            // Handle "GetMood" command - returns only the persistent mood state (not event response)
+            // Handle "GetMood" command - updates ARC variables with persistent mood state only (not event response)
             if (string.Equals(command, "GetMood", StringComparison.OrdinalIgnoreCase))
             {
                 ARC.Scripting.VariableManager.SetVariable("$EmotionMood", _emotionEngine.CurrentMood ?? "Neutral");
@@ -288,7 +440,7 @@ namespace ZAMAEmotionModel {
                 return;
             }
 
-            // Handle "ListEvents" command - returns list of registered events
+            // Handle "ListEvents" command - returns list of registered events in $EmotionEvents variable
             if (string.Equals(command, "ListEvents", StringComparison.OrdinalIgnoreCase))
             {
                 System.Diagnostics.Debug.WriteLine($"ListEvents: Dictionary has {_events.Count} events");
@@ -303,6 +455,9 @@ namespace ZAMAEmotionModel {
         }
 
 
+        /// <summary>
+        /// Handles the Register button click. Registers a new emotion event from UI input fields.
+        /// </summary>
         private void btnRegister_Click(object sender, EventArgs e)
         {
             string keyword = tbKeyword.Text.Trim();
@@ -343,6 +498,11 @@ namespace ZAMAEmotionModel {
             arousalLabel.Text = $"Arousal: {arousal:F1}";
         }
 
+        /// <summary>
+        /// Updates ARC variables with current emotion state.
+        /// Sets both mood variables (persistent state) and response variables (immediate event reaction).
+        /// Other ARC components can read these variables to react to the robot's emotional state.
+        /// </summary>
         private void UpdateEmotionVariables()
         {
             // Update ARC variables with current mood state (persistent, changes slowly)
@@ -369,6 +529,11 @@ namespace ZAMAEmotionModel {
             }
         }
 
+        /// <summary>
+        /// Internal method to trigger an emotion event by keyword.
+        /// Looks up the event, calculates the emotional response, updates UI, and stores the result.
+        /// </summary>
+        /// <param name="keyword">Event keyword to trigger</param>
         private void TriggerEventInternal(string keyword)
         {
             try
@@ -390,7 +555,17 @@ namespace ZAMAEmotionModel {
 
                 System.Diagnostics.Debug.WriteLine($"TriggerEventInternal: Found event '{keyword}' with valence={evt.Valence}, arousal={evt.Arousal}");
 
-                var result = _emotionEngine.CalculateResponse(evt.Valence, evt.Arousal, keyword);
+                EmotionEngine.EmotionalResponseResult result;
+                try
+                {
+                    result = _emotionEngine.CalculateResponse(evt.Valence, evt.Arousal, keyword);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Cooldown is active - event was blocked
+                    System.Diagnostics.Debug.WriteLine($"TriggerEventInternal: {ex.Message}");
+                    return; // Silently ignore the event
+                }
 
                 System.Diagnostics.Debug.WriteLine($"TriggerEventInternal: Calculated result - Emotion={result.DisplayEmotion}, Valence={result.Valence}, Arousal={result.Arousal}");
 
@@ -412,6 +587,9 @@ namespace ZAMAEmotionModel {
             }
         }
 
+        /// <summary>
+        /// Handles the Trigger button click. Triggers an emotion event from the trigger text box.
+        /// </summary>
         private void btnTrigger_Click(object sender, EventArgs e)
         {
             string keyword = tbTrigger.Text.Trim();
@@ -430,6 +608,10 @@ namespace ZAMAEmotionModel {
             TriggerEventInternal(keyword);
         }
 
+        /// <summary>
+        /// Synchronizes the in-memory event dictionary from the configuration.
+        /// Called when configuration is loaded from a project file.
+        /// </summary>
         private void SyncEventsFromConfig()
         {
             System.Diagnostics.Debug.WriteLine($"SyncEventsFromConfig: Clearing _events (had {_events.Count} events)");
@@ -457,6 +639,10 @@ namespace ZAMAEmotionModel {
             RefreshEventsGrid();
         }
 
+        /// <summary>
+        /// Synchronizes the configuration from the in-memory event dictionary.
+        /// Called before saving configuration to ensure all registered events are persisted.
+        /// </summary>
         private void SyncConfigFromEvents()
         {
             if (_config == null)
@@ -468,6 +654,9 @@ namespace ZAMAEmotionModel {
             RefreshEventsGrid();
         }
 
+        /// <summary>
+        /// Resets the output labels to their default state.
+        /// </summary>
         private void ResetOutputLabels()
         {
             emotionLabel.Text = "Emotion";
@@ -476,22 +665,35 @@ namespace ZAMAEmotionModel {
             UpdateStateLabels();
         }
 
+        /// <summary>
+        /// Helper method to parse a float value using invariant culture.
+        /// </summary>
         private static bool TryParseFloat(string input, out float value)
         {
             return float.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
         }
 
+        /// <summary>
+        /// Helper method to clamp a value between min and max.
+        /// </summary>
         private static float Clamp(float value, float min, float max)
         {
             return Math.Max(min, Math.Min(max, value));
         }
 
+        /// <summary>
+        /// Updates the mood and temperament display labels.
+        /// </summary>
         private void UpdateStateLabels()
         {
             moodValueLabel.Text = $"Mood: {_emotionEngine.CurrentMood}";
             personalityValueLabel.Text = $"Temperament: {_emotionEngine.CurrentTemperament}";
         }
 
+        /// <summary>
+        /// Refreshes the events grid with current registered events.
+        /// Events are displayed sorted alphabetically by keyword.
+        /// </summary>
         private void RefreshEventsGrid()
         {
             if (eventsGrid == null)
@@ -506,6 +708,10 @@ namespace ZAMAEmotionModel {
             }
         }
 
+        /// <summary>
+        /// Applies configuration values to UI controls.
+        /// Sets the _isLoadingConfig flag to prevent event handlers from firing during load.
+        /// </summary>
         private void ApplyConfigToUi()
         {
             if (_config == null)
@@ -519,9 +725,15 @@ namespace ZAMAEmotionModel {
             chkRandomPersonality.Checked = _config.RandomizePersonality;
             chkMoodShift.Checked = _config.AllowMoodShift;
             chkPersonalityShift.Checked = _config.AllowPersonalityShift;
+            cooldownMinText.Text = _config.MinCooldownMs.ToString();
+            cooldownMaxText.Text = _config.MaxCooldownMs.ToString();
             _isLoadingConfig = false;
         }
 
+        /// <summary>
+        /// Applies configuration values to the emotion engine.
+        /// Called when configuration is loaded from a project file.
+        /// </summary>
         private void UpdateEngineFromConfig()
         {
             if (_config == null)
@@ -532,9 +744,14 @@ namespace ZAMAEmotionModel {
             _emotionEngine.SetShiftOptions(_config.AllowMoodShift, _config.AllowPersonalityShift);
             _emotionEngine.SetRandomizePersonality(_config.RandomizePersonality, false);
             _emotionEngine.SetPersonality(_config.TemperamentValence, _config.TemperamentArousal, true);
+            _emotionEngine.MinCooldownMs = _config.MinCooldownMs;
+            _emotionEngine.MaxCooldownMs = _config.MaxCooldownMs;
             UpdateStateLabels();
         }
 
+        /// <summary>
+        /// Handles the Apply Personality button click. Applies new personality/temperament values.
+        /// </summary>
         private void btnApplyPersonality_Click(object sender, EventArgs e)
         {
             if (_config == null)
@@ -565,6 +782,9 @@ namespace ZAMAEmotionModel {
             UpdateEmotionVariables(); // Update ARC variables immediately
         }
 
+        /// <summary>
+        /// Handles the Randomize Personality checkbox change. Enables/disables personality randomization.
+        /// </summary>
         private void chkRandomPersonality_CheckedChanged(object sender, EventArgs e)
         {
             if (_isLoadingConfig)
@@ -582,6 +802,9 @@ namespace ZAMAEmotionModel {
             UpdateStateLabels();
         }
 
+        /// <summary>
+        /// Handles the Allow Mood Shift checkbox change. Enables/disables mood drift over time.
+        /// </summary>
         private void chkMoodShift_CheckedChanged(object sender, EventArgs e)
         {
             if (_isLoadingConfig)
@@ -598,6 +821,9 @@ namespace ZAMAEmotionModel {
             _emotionEngine.SetShiftOptions(_config.AllowMoodShift, _config.AllowPersonalityShift);
         }
 
+        /// <summary>
+        /// Handles the Allow Personality Shift checkbox change. Enables/disables personality drift over time.
+        /// </summary>
         private void chkPersonalityShift_CheckedChanged(object sender, EventArgs e)
         {
             if (_isLoadingConfig)
@@ -614,7 +840,9 @@ namespace ZAMAEmotionModel {
             _emotionEngine.SetShiftOptions(_config.AllowMoodShift, _config.AllowPersonalityShift);
         }
 
-
+        /// <summary>
+        /// Handles the Load Event button click. Loads selected event from grid into edit fields.
+        /// </summary>
         private void btnLoadEvent_Click(object sender, EventArgs e)
         {
             if (eventsGrid.SelectedRows.Count == 0)
@@ -637,6 +865,9 @@ namespace ZAMAEmotionModel {
             }
         }
 
+        /// <summary>
+        /// Handles the Delete Event button click. Removes selected event after confirmation.
+        /// </summary>
         private void btnDeleteEvent_Click(object sender, EventArgs e)
         {
             if (eventsGrid.SelectedRows.Count == 0)
@@ -663,29 +894,5 @@ namespace ZAMAEmotionModel {
             }
         }
 
-        private void label5_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label6_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void eventsGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
-
-        private void groupBox2_Enter(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label4_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 }

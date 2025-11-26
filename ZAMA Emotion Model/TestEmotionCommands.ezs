@@ -4,7 +4,7 @@
 : Examples:
 :   $Emotion.Command = TriggerEvent:happy
 :   $Emotion.Command = RegisterEvent:excited:9:8
-:   $Emotion.Command = GetEmotion
+:   $Emotion.Command = GetEmotion  (optional - TriggerEvent already updates variables)
 
 PRINT("=== ZAMA Emotion Model Test Script ===")
 PRINT("")
@@ -45,31 +45,23 @@ PRINT("Step 3: Triggering events and checking RESPONSES (immediate reactions)...
 PRINT("  About to trigger 'happy' (should use valence=8, arousal=6)...")
 $Emotion.Command = "TriggerEvent:happy"
 Sleep(1000)
-$Emotion.Command = "GetEmotion"
-Sleep(500)
 PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
 PRINT("")
 
 PRINT("  About to trigger 'sad' (should use valence=-7, arousal=-3)...")
 $Emotion.Command = "TriggerEvent:sad"
 Sleep(1000)
-$Emotion.Command = "GetEmotion"
-Sleep(500)
 PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
 PRINT("")
 
 PRINT("  About to trigger 'excited' (should use valence=9, arousal=8)...")
 $Emotion.Command = "TriggerEvent:excited"
 Sleep(1000)
-$Emotion.Command = "GetEmotion"
-Sleep(500)
 PRINT("    Event Response - Emotion: " + $EmotionCurrent + ", Valence: " + $EmotionValence + ", Arousal: " + $EmotionArousal)
 PRINT("")
 
 PRINT("=== Test Complete ===")
 PRINT("Final State - Event Response:")
-$Emotion.Command = "GetEmotion"
-Sleep(500)
 PRINT("  Response Emotion: " + $EmotionCurrent)
 PRINT("  Response Valence: " + $EmotionValence)
 PRINT("  Response Arousal: " + $EmotionArousal)
